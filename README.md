@@ -48,7 +48,7 @@ This contains the tasks needed to install, configure and run CoreOS on a VM, whi
 1. Install CoreOS to a new virtual machine
 1. Sort out some networking stuff
 1. Set up a shared folder between your host machine and the guest CoreOS machine (this is what doesn't work on Windows)
-1. Forward port 8080 on your host machine to port 8080 on guest CoreOS machine
+1. Forward port 8080 on your host machine to port 8080 on the guest CoreOS machine
 1. Run a *provisioner* shell script on the guest CoreOS machine
 
 The provisioner takes over to do the following steps:
