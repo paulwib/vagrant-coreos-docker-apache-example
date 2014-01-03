@@ -1,4 +1,4 @@
-# CoreOS on Vagrant Running an Ubuntu Docker Container with Apache
+# Vagrant, CoreOS and a Docker Apache Container
 
 ## Introduction
 
@@ -61,17 +61,9 @@ The provisioner is only run once when the machine is started for the first time.
 
 ## About the Dockerfile
 
-The Dockerfile contains a set of instructions for building your container. There's a [Dockerfile tutorial][] which explains more about how this works in general. For this specific example the Dockerfile does the following:
+The Dockerfile contains a set of instructions for building your container. There's a [Dockerfile tutorial][] which explains more about how this works in general.
 
-1. Creates a new container based on the Ubuntu container
-1. Sets up `aptitude` and does and `apt-get update` to update all the Ubuntu packages in the normal way
-1. Installs apache and php5
-1. Sets up apache environment
-1. Tells the container to expose port 80
-1. Sets an entry point to run apache on start up
-1. Issues a command to run it in the foreground - this is important as normally a container exits after a command is completed, by running it in the foreground it won't exit
-
-The building is done in the provisioner in the Vagrantfile with the line:
+The build is done in the provisioner in the Vagrantfile with the line:
 
     docker build -t test-apache - < /home/core/share/Dockerfile
 
@@ -82,6 +74,16 @@ To break it down:
 * `-t test-apache` means tag the resulting container with the name "test-apache" (more about tagging below)
 
 * ` - < /home/core/share/Dockerfile` means read the build instructions from this Dockerfile (which is read via STDIN) which is in the shared directory set up in the Vagrantfile
+
+Here's a rough explanation of what the steps in the Dockerfile do:
+
+1. Create a new container based on the Ubuntu container
+1. Set up `aptitude` and runs `apt-get update` to update all the Ubuntu packages in the normal way
+1. Install apache and php5
+1. Set up apache environment
+1. Tell the container to expose port 80
+1. Set an entry point to run apache when the container starts
+1. Issue a command to run apache in the foreground - this is important as normally a container exits after a command is completed, by running it in the foreground it won't exit
 
 To explain about the tagging step, Docker works in a similar way to git, in that changes to a container are committed and can be pushed and pulled from repositories. There is a public repository of pre-built containers you can use to base your own containers on. It's also possible to have private repositories too, although this is all very alpha at the moment.
 
@@ -95,11 +97,11 @@ While this builds the container it doesn't actually run anything. This is done b
 
 ## About the systemd File (apache.service)
 
-This contains the information needed to run the container. You could manually run the container by SSHing into the server and running:
+You could manually run the container by SSHing into the server and running:
 
     docker run -v /home/core/share/app:/var/www -p 8080:80 -d test-apache
 
-The `apache.service` file automates this to make sure the container runs when CoreOS starts up without you having to manually log-in and start it. It also contains other instructions, like identifying the service and setting how long it should wait before restarting after a crash. 
+The `apache.service` file automates this to make sure the container runs when CoreOS starts up without you having to manually log-in and start it. It also contains other instructions, like identifying the service and setting how long it should wait before restarting after a crash.
 
 Let's break that command down:
 
@@ -114,6 +116,12 @@ Let's break that command down:
 * `test-apache` is the name of the container we created and tagged when using `docker build` with the Dockerfile.
 
 During provisioning the `apache.service` file is copied to `/media/state/units` which is where all service files should go. Then systemd is restarted to ensure it works the first time the machine is provisioned. Once this is in place nothing else needs to be done, the service will start whenever the machine is restarted.
+
+## So What's the Point?
+
+It's common to use Vagrant as a development environment, but often this is based on just one machine, relying on other services in staging environments that you have no control over. With CoreOS and Docker it's possible to spin up a whole stack of services (although in this example we start with just one) and have total control over all the pieces of the puzzle.
+
+The other key thing I wanted to show with this example is how to share volumes across Vagrant, CoreOS and Docker containers so you can work with code checked out on your real machine.
 
 [Get VirtualBox]:http://virtualbox.org
 [Get Vagrant]:http://vagrantup.com
