@@ -1,3 +1,6 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
 $expose_port = 8080
 
 # Provisioning shell script
