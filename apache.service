@@ -1,0 +1,12 @@
+[Unit]
+Description=Apache Web Service
+After=docker.service
+Requires=docker.service
+
+[Service]
+Restart=always
+RestartSec=10s
+ExecStart=/usr/bin/docker run -v /home/core/share/app:/var/www -p 8080:80 -d test-apache
+
+[Install]
+WantedBy=local.target
