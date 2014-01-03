@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This is an example of how to run the Apache web server in a Docker container on CoreOS using Vagrant and VirtualBox. Let's break that down a bit:
+This is an example of how to run the Apache web server in a Docker container on CoreOS using Vagrant and VirtualBox. Let's break that down a bit...
 
 ### VirtualBox
 
@@ -18,13 +18,13 @@ Vagrant is a tool to make it easy to create, provision, start stop and generally
 
 ### CoreOS
 
-CoreOS is a minimal Linux distribution designed for distributed platforms. It's also handy for development environments too. It's particularly tailored for working with `systemd`, `etcd` and Docker containers.
+CoreOS is a minimal Linux distribution designed for distributed platforms. It's also handy for development environments too. It comes with Docker built-in.
 
 [CoreOS website][]
 
 ### Docker
 
-Docker is used to create lightweight, portable *containers* for your application. These are a little bit like virtual machines in that they have their own operating system, file system, users etc. but unlike a VM they share resources with the host system.
+Docker is used to create lightweight, portable *containers* for your application. These are a little bit like virtual machines in that they have their own operating system, file system, processes etc. but unlike a VM they share resources with the host system.
 
 [Docker website][]
 
@@ -34,44 +34,44 @@ Docker is used to create lightweight, portable *containers* for your application
 
 Assuming you've got VirtualBox and Vagrant installed, from the root of this repo run:
 
-  $ vagrant up
+    $ vagrant up
 
-This runs the instructions in the Vagrantfile which roughly does the following:
+Assuming everything worked as expected you should now be able to visit http://localhost:8080 and see a very interesting web page :)
 
-1. Downloads a CoreOS operating system image
-1. Installs CoreOS to a new virtual machine
-1. Sorts out some networking stuff
-1. Sets up a shared folder between your host machine and the guest CoreOS machine (this is what doesn't work on Windows)
-1. Forwards port 8080 on your host machine to port 8080 on guest CoreOS machine
-1. Runs a *provisioner* shell script on the guest CoreOS machine
+**WARNING** On first provisioning it could be quite slow to download CoreOS and the Ubuntu image. The pulling of the Ubuntu image can appear like it's hanging as doesn't give any progress. Try to be patient :) If not I've found it's sometimes quicker to stop the provisioning and manually pull the container. To do that press `Ctrl+C` twice to stop the provisioning. Then reload the machine without provisioning using `vagrant reload --no-provision`. Then SSH into the machine with `vagrant ssh` and run `docker pull ubuntu`. When that's done `exit` out of the machine and run `vagrant provision` again.
+
+## About the Vagrantfile
+
+This contains the tasks needed to install, configure and run CoreOS on a VM, which roughly break down as:
+
+1. Download a CoreOS operating system image
+1. Install CoreOS to a new virtual machine
+1. Sort out some networking stuff
+1. Set up a shared folder between your host machine and the guest CoreOS machine (this is what doesn't work on Windows)
+1. Forward port 8080 on your host machine to port 8080 on guest CoreOS machine
+1. Run a *provisioner* shell script on the guest CoreOS machine
 
 The provisioner takes over to do the following steps:
 
 1. Build a Docker container based on the `Dockerfile`
-1. Add the `apache.service` configuration to run the container
+1. Add the systemd service to run the container whenever the machine starts
 1. Start the container on initial provisioning
 
-The important thing to remember about the provisioner is that it is only run once when the machine is started for the first time. These steps don't need to happen on subsequent restarts of the machine.
-
-Assuming everything worked as expected you should now be able to visit http://localhost:8080 and see a very interesting web page :)
-
-**WARNING** On first provisioning it could be quite slow as has to download CoreOS and the Ubuntu image. The pulling of the Ubuntu image can appear like it's hanging as doesn't give any progress. Try to be patient :) If not I've found it's sometimes quicker to stop the provisioning and manually pull the container, but may just be an illusion. To do that press `Ctrl+C` twice to stop the provisioning. Then reload the machine without provisioning using `vagrant reload --no-provision`. Then SSH into the machine with `vagrant ssh` and run `docker pull Ubuntu`. When that's done `exit` out of the machine and run `vagrant provision` again.
+The provisioner is only run once when the machine is started for the first time. These steps don't need to happen on subsequent restarts of the machine.
 
 ## About the Dockerfile
 
-The Dockerfile contains a set of instructions for building your container. There's a [Dockerfile tutorial][] which explains more about how this works in a general sense. For this specific example the Dockerfile does the following:
+The Dockerfile contains a set of instructions for building your container. There's a [Dockerfile tutorial][] which explains more about how this works in general. For this specific example the Dockerfile does the following:
 
 1. Creates a new container based on the Ubuntu container
 1. Sets up `aptitude` and does and `apt-get update` to update all the Ubuntu packages in the normal way
-1. Installs apache, php5 and mysql
-1. Sets up Apache environment
+1. Installs apache and php5
+1. Sets up apache environment
 1. Tells the container to expose port 80
 1. Sets an entry point to run apache on start up
 1. Issues a command to run it in the foreground - this is important as normally a container exits after a command is completed, by running it in the foreground it won't exit
 
-While this builds the container it doesn't actually run anything. This is done by creating a service file which is run by `systemd`.
-
-The building is done in the provisioner of the Vagrantfile with the line:
+The building is done in the provisioner in the Vagrantfile with the line:
 
     docker build -t test-apache - < /home/core/share/Dockerfile
 
@@ -79,9 +79,9 @@ To break it down:
 
 * `docker build` is the command to create a new container
 
-* `-t test-apache` means tag the resulting container (more about tagging below)
+* `-t test-apache` means tag the resulting container with the name "test-apache" (more about tagging below)
 
-* ` - < /home/core/share/Dockerfile` means read the build instructions from this Dockerfile (which is read via STDIN). This is in the shared directory set up in the Vagrantfile.
+* ` - < /home/core/share/Dockerfile` means read the build instructions from this Dockerfile (which is read via STDIN) which is in the shared directory set up in the Vagrantfile
 
 To explain about the tagging step, Docker works in a similar way to git, in that changes to a container are committed and can be pushed and pulled from repositories. There is a public repository of pre-built containers you can use to base your own containers on. It's also possible to have private repositories too, although this is all very alpha at the moment.
 
@@ -91,13 +91,17 @@ In the Dockerfile each step effectively results in a commit. Each commit is cach
 
 At the end we tag the resulting container with a name so we can refer to it later, but it isn't actually being pushed to any repository. To learn more about commit, push and pull try the [Docker tutorial][].
 
-## About the apache.service File
+While this builds the container it doesn't actually run anything. This is done by creating a service file which is run by `systemd`.
 
-This contains the information needed to run the container. You can manually run the container by SSHing into the server and running:
+## About the systemd File (apache.service)
+
+This contains the information needed to run the container. You could manually run the container by SSHing into the server and running:
 
     docker run -v /home/core/share/app:/var/www -p 8080:80 -d test-apache
 
-The main thing the `apache.service` file does is make sure this runs when CoreOS starts up, although it also contains other instructions about restarting the service etc. So let's break that command down a bit more:
+The `apache.service` file automates this to make sure the container runs when CoreOS starts up without you having to manually log-in and start it. It also contains other instructions, like identifying the service and setting how long it should wait before restarting after a crash. 
+
+Let's break that command down:
 
 * `docker run` is the command that actually runs the container.
 
